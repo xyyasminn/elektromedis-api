@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\AlatElektromedis;
+use Illuminate\Support\Facades\Storage;
 
 class AlatWebController extends Controller
 {
@@ -11,20 +12,15 @@ class AlatWebController extends Controller
     {
         $query = AlatElektromedis::query();
 
-        if ($request->filled('search')) {
-            $query->where('nama_alat', 'like', '%' . $request->search . '%');
+        if ($request->search) {
+            $query->where('nama_alat', 'like', '%'.$request->search.'%');
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('kondisi')) {
+        if ($request->kondisi) {
             $query->where('kondisi', $request->kondisi);
         }
 
-        $data = $query->get();
-
+        $data = $query->latest()->get();
         return view('alat.index', compact('data'));
     }
 
@@ -33,47 +29,67 @@ class AlatWebController extends Controller
         return view('alat.create');
     }
 
-  public function store(Request $request)
-{
-    AlatElektromedis::create([
-        'nama_alat'        => $request->nama_alat,
-        'merk'             => $request->merk,
-        'tipe'             => $request->tipe,
-        'tahun_pengadaan'  => $request->tahun_pengadaan, // WAJIB
-        'kondisi'          => $request->kondisi,
-        'lokasi'           => $request->lokasi,
-    ]);
-
-    return redirect('/alat');
-}
-
-
-
-    public function edit($id)
+    public function store(Request $request)
     {
-        $alat = AlatElektromedis::findOrFail($id);
+        $request->validate([
+            'nama_alat'        => 'required',
+            'merk'             => 'required',
+            'tipe'             => 'required',
+            'tahun_pengadaan'  => 'required|integer',
+            'kondisi'          => 'required',
+            'lokasi'           => 'required',
+            'gambar'           => 'nullable|image|max:2048',
+        ]);
+
+        $data = $request->except('gambar');
+
+        if ($request->hasFile('gambar')) {
+            $data['gambar'] = $request->file('gambar')->store('alat', 'public');
+        }
+
+        AlatElektromedis::create($data);
+
+        return redirect()->route('alat.index');
+    }
+
+    public function edit(AlatElektromedis $alat)
+    {
         return view('alat.edit', compact('alat'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, AlatElektromedis $alat)
     {
-        $alat = AlatElektromedis::findOrFail($id);
-
-        $alat->update([
-             'nama_alat'        => $request->nama_alat,
-        'merk'             => $request->merk,
-        'tipe'             => $request->tipe,
-        'tahun_pengadaan'  => $request->tahun_pengadaan,
-        'kondisi'          => $request->kondisi,
-        'lokasi'           => $request->lokasi,
+        $request->validate([
+            'nama_alat'        => 'required',
+            'merk'             => 'required',
+            'tipe'             => 'required',
+            'tahun_pengadaan'  => 'required|integer',
+            'kondisi'          => 'required',
+            'lokasi'           => 'required',
+            'gambar'           => 'nullable|image|max:2048',
         ]);
 
-        return redirect('/alat');
+        $data = $request->except('gambar');
+
+        if ($request->hasFile('gambar')) {
+            if ($alat->gambar) {
+                Storage::disk('public')->delete($alat->gambar);
+            }
+            $data['gambar'] = $request->file('gambar')->store('alat', 'public');
+        }
+
+        $alat->update($data);
+
+        return redirect()->route('alat.index');
     }
 
-    public function destroy($id)
+    public function destroy(AlatElektromedis $alat)
     {
-        AlatElektromedis::destroy($id);
-        return redirect('/alat');
+        if ($alat->gambar) {
+            Storage::disk('public')->delete($alat->gambar);
+        }
+
+        $alat->delete();
+        return redirect()->route('alat.index');
     }
 }

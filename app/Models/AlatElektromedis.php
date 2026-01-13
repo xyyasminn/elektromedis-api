@@ -13,11 +13,11 @@ class AlatElektromedis extends Model
 
     protected $fillable = [
         'nama_alat',
+        'gambar',
         'merk',
         'tipe',
         'tahun_pengadaan',
         'kondisi',
-        'lokasi'
+        'lokasi',
     ];
 }
-
